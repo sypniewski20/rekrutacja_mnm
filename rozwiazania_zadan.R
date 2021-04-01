@@ -25,6 +25,7 @@ return(list(
   paste(odd_list,collapse = '')
 ))
 }
+
 test <- upperlower(letters[5:20])
 test
 
@@ -47,12 +48,9 @@ letter_count <- function (x) {
   }
 }
 
-
 letter_count(test3)
 
-
-### Zad 3 (można to szybciej zrobić tabixem ale rozumiem że sprawdzian zakłada korzystanie z R)
-
+### Zad 3 (mo?nna to szybciej zrobi? tabixem ale rozumiem ?e sprawdzian zak?ada korzystanie z R)
 
 library(data.table)
 vcf <- fread('../CPCT02220079.annotated.processed.vcf.gz',skip=402,sep='\t')
@@ -64,24 +62,34 @@ library(tidyverse)
 chr12 <-  vcf %>% filter(Chromosome == '12' & POS >= 112204691 & POS <= 112247789)
 write.table(chr12,'chr12_010421.csv',quote = F,row.names = F,sep='\t')
 
-
 ### Zad 4
 
+### Length > 0 = insercje
+### Length < 0 = delecje
 vcf$Length <- nchar(vcf$REF) - nchar(vcf$ALT)
 
 plot_vcf <- vcf %>% group_by(Chromosome,Length) %>% summarise(Count = log(n())) %>% filter(Length != 0 & Count > 0) %>% 
   mutate(Type = ifelse(Length < 0,'Insertion','Deletion'))
 
-
 plot_vcf  %>% ggplot() + geom_col(aes(x=Length, y= Count, fill=Type)) + 
-  facet_wrap(~Chromosome) + ggsave('indels.png',height = 15, width=15)
-
+  facet_wrap(~Chromosome) + ggsave('indels.png',height = 15, width=15) + ylab('log10 count')
 
 write.table(plot_vcf,'indels_010421.csv',quote = F,row.names = F,sep='\t')
 
 ## Zad5
+vcf_het <- vcf %>% filter(FILTER == 'PASS')
+vcf_het$GoNLv5 <- str_extract(vcf_het$INFO, ';GoNLv5_AF=.*;')
+vcf_het$GoNLv5 <- gsub('GoNLv5_AF=','',vcf_het$GoNLv5)
+vcf_het$GoNLv5 <- as.numeric(gsub(';','',vcf_het$GoNLv5))
 
+vcf_het$af.05 <- str_extract(vcf_het$INFO, ';AF=0.5;')
+vcf_het$af.05 <- gsub(';AF=','',vcf_het$af.05)
+vcf_het$af.05 <- as.numeric(gsub(';','',vcf_het$af.05))
 
+vcf_het_filtered <- vcf_het %>% filter(is.na(af.05) == F) %>% filter(GoNLv5 < 0.01 & is.na(GoNLv5) == F)
+
+### Liczba wariant?w z AF < 0.01
+vcf_het_filtered %>% summarise('AF < 0.01'=n())
 
 
 ## Zad6
@@ -107,6 +115,7 @@ write.table(chr_plot, 'cov_per_chr.csv',sep='\t',quote = F,row.names = F)
 ## Zad 8
 
 ### Funkcja do obliczania VAF dla indeli
+library(vcfR)
 strelka_vaf <- function(x) {
   streika_vcf <- read.vcfR(x)
   streika_tidy <- vcfR2tidy(streika_vcf)
@@ -127,8 +136,8 @@ write.table(indel,'streika_indel.csv',sep='\t',quote=F,row.names = F)
 
 ### VAF dla snv
 
-#### Nie wiedziałem jak to zrobić (znaczy wiedziałem ale było to zbyt toporne by udostępniać to publicznie) 
-#### więc postanowiłem wykorzystać gotowe rozwiązanie https://github.com/biobenkj/StrelkaParser
+#### Nie wiedzia?em jak to zrobi? (znaczy wiedziałem ale by??o to zbyt toporne by udost?spnia? to publicznie) 
+#### wi?c postanowi?em wykorzysta? gotowe rozwi?zanie https://github.com/biobenkj/StrelkaParser
 
 parse_vcf_alt1 <- function(x) {
   vcf <- readr::read_tsv(x, comment = "##")
